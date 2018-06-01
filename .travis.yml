@@ -1,8 +1,15 @@
 language: python
 python:
-  - "3.4"
-  - "3.5"
-  - "3.6"
-  - "nightly"
+- '3.4'
+- '3.5'
+- '3.6'
+- nightly
 install: pip install -r requirements.txt
-script: ./test_mockify.py
+script: "./test_mockify.py"
+deploy:
+  provider: pypi
+  username: spoorcc
+  password:
+    secure: QxzxbekKUZjzhxjUwq7hNM1j0Av6AOQe/BvmgARgUZyz2vu8lRp8hWY/FTQ8Nrkb2OqEw20SB/zGwFm60Jbr6ajoCjUc7G51AzEmSG9YwkN+L5cfm8oU720AeztyeHZogPFPBqfGEMIY1kX5w4XBTqymFBekvSH755rPxPwjLuSmQfVx+JiTv9Q3slr9juzvebHZkkNgoLEeyF+7UQ6dhQWqQIn9SRw5DQDut+Zwa1zdoKTvbTV3NShOpGISCpYn5ffbxzSOJqJralaxpKwpNGqR45zX/p1qKB1z29B8JaO4NDQYzJPxbBk3oubafFbv5+a/iOhCRH9/8RcXzLjGAhaqqKM50Qn5+IKNu2EHuz7yo5YonK5YwKZNTXOAoT29756OSaWic4Q4twKT4JSGtrX1BbeK75nqXF7m0Q0M8ITHg2TpxCUHWSMxHIBhqoDarb04A7BkzaEjSPVAtdSswkNC9jrKkdTeK50Xd73X5uk7M0bdfon2/96nOkLcsLJYOWBoAEiDpQz2HPXiBBBxKNO5YuWxv0obGWUt/zn/8cAE/bYN+EmaHdAOYbYTx9LwxHsAT97wjKSCtVeTF3SY6VO4dJiFx49jwOzsdPBbWIOhgQNrTz7Z834+sgodkiTv7K/lyKLgNLukjSiwq1NsS15ow/1nekq+acmsu08tyos=
+  on:
+    tags: true
