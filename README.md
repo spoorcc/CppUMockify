@@ -1,5 +1,6 @@
-# Mockify (work in progress!)
+# Mockify
 
+Cloned from [Marco M/Mockify](https://bitbucket.org/marco_m/mockify)
 
 [![Build Status](https://travis-ci.org/marco-m/mockify.svg?branch=master
 )](https://travis-ci.org/marco-m/mockify)
