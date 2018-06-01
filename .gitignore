@@ -1,4 +1,5 @@
 __pycache__
 *.cpp
 venv
+CppUMockify.egg-info
 
