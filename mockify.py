@@ -59,7 +59,8 @@ class MockError(Exception):
         return repr(self.value)
 
 
-def generate_mock(mock_filename, mock_prototype):
+def generate_mock(mocked_module, mock_prototype):
+    mock_filename = "{0}_mock.cpp".format(mocked_module)
     include_filename = "{0}.h".format(mock_filename)
     print("working directory: " + os.getcwd())
     print("mock_filename: " + mock_filename)
@@ -244,14 +245,14 @@ def generate_args(prototype, param_list):
 
 def main():
     parser = argparse.ArgumentParser(description='Generate CppUMock boilerplate code.')
-    parser.add_argument('filename', metavar='<filename>', type=str,
-    	                    help='Filename of the mock to generate')
+    parser.add_argument('module', metavar='<module>', type=str,
+    	                    help='Module that will be mocked')
     parser.add_argument('prototype', metavar='<prototype>', type=str,
     	                    help='Function prototype to generate the mock for')
     
     args = parser.parse_args()
 
-    generate_mock(args.filename, args.prototype)
+    generate_mock(args.module, args.prototype)
 
 if __name__ == "__main__":
     main()
