@@ -3,6 +3,7 @@
 Cloned from [Marco M/Mockify](https://bitbucket.org/marco_m/mockify)
 
 [![Build Status](https://travis-ci.org/spoorcc/CppUMockify.svg?branch=master)](https://travis-ci.org/spoorcc/CppUMockify)
+[![PyPI version](https://badge.fury.io/py/CppUMockify.svg)](https://badge.fury.io/py/CppUMockify)
 
 Generate complete boilerplate code for [CppUTest][] C/C++ mocks.
 
@@ -37,6 +38,10 @@ Already usable with basic functionalities. Most important missing parts:
 - support for basic typedefs (eg size_t) both as function type and as function
 argument
 - support for output parameters (eg void foo(int* bar))
+
+## Installation
+
+    pip install CppUMockify
 
 ## Usage
 
