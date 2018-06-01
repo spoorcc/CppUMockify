@@ -11,7 +11,7 @@ with open(path.join(here, 'README.md'), encoding='utf-8') as f:
 
 setup(
     name='CppUMockify',
-    version='0.0.2',
+    version='0.0.4',
     description='Generate CppUMock implementations',
     long_description=long_description,
     long_description_content_type='text/markdown',
