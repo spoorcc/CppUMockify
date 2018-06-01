@@ -22,6 +22,7 @@ It expects to be run in the directory containing the mocks.
 
 import sys
 import os.path
+import argparse
 
 from pycparser import c_parser, c_ast
 
@@ -58,13 +59,8 @@ class MockError(Exception):
         return repr(self.value)
 
 
-def main(args):
-    if len(args) != 2:
-        print("Usage: mockify mock_file mock_prototype")
-        sys.exit(1)
-    mock_filename = "{0}_mock.cpp".format(args[0])
-    include_filename = "{0}.h".format(args[0])
-    mock_prototype = args[1]
+def generate_mock(mock_filename, mock_prototype):
+    include_filename = "{0}.h".format(mock_filename)
     print("working directory: " + os.getcwd())
     print("mock_filename: " + mock_filename)
     print("include_filename: " + include_filename)
@@ -246,6 +242,16 @@ def generate_args(prototype, param_list):
 
         return args, with_parameters
 
+def main():
+    parser = argparse.ArgumentParser(description='Generate CppUMock boilerplate code.')
+    parser.add_argument('filename', metavar='<filename>', type=str,
+    	                    help='Filename of the mock to generate')
+    parser.add_argument('prototype', metavar='<prototype>', type=str,
+    	                    help='Function prototype to generate the mock for')
+    
+    args = parser.parse_args()
+
+    generate_mock(args.filename, args.prototype)
 
 if __name__ == "__main__":
-    main(sys.argv[1:])
+    main()
