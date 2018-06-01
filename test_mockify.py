@@ -15,8 +15,8 @@
 # OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 
-from mockify import generate_mock_boilerplate
-from mockify import MockError
+from cppumockify import generate_mock_boilerplate
+from cppumockify import MockError
 import unittest
 import textwrap
 
