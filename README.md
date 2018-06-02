@@ -4,6 +4,7 @@ Cloned from [Marco M/Mockify](https://bitbucket.org/marco_m/mockify)
 
 [![Build Status](https://travis-ci.org/spoorcc/CppUMockify.svg?branch=master)](https://travis-ci.org/spoorcc/CppUMockify)
 [![PyPI version](https://badge.fury.io/py/CppUMockify.svg)](https://badge.fury.io/py/CppUMockify)
+![PyPI - License](https://img.shields.io/pypi/l/CppUMockify.svg)
 
 Generate complete boilerplate code for [CppUTest][] C/C++ mocks.
 
