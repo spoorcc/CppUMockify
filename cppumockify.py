@@ -113,29 +113,8 @@ def add_mock_function(file, prototype):
 
 def generate_mock_boilerplate(prototype):
     ''' Generate the boilerplate for the mock '''
-    # Thanks to cdecl.py from pycparser
 
-    parser = c_parser.CParser()
-    try:
-        ast = parser.parse(prototype)
-    except c_parser.ParseError as exc:
-        raise MockError("Parse error: '{0}' with input: '{1}'".format(
-            str(exc), prototype))
-    decl = ast.ext[-1]
-    if not isinstance(decl, c_ast.Decl):
-        raise MockError("Not a valid declaration: " + prototype)
-    # decl.show(); print("")
-
-    if not isinstance(decl.type, c_ast.FuncDecl):
-        raise MockError("Not a function declaration: " + prototype)
-
-    # storage is, for example, "static" in "static void f();"
-    if decl.storage:
-        storage = ' '.join(decl.storage)
-        raise MockError("Cannot mock a function with storage: " + storage)
-
-    func_decl = decl.type
-    function_name = decl.name
+    func_decl, function_name = parse_function_from_prototype(prototype)
 
     type_name = generate_type_name(func_decl)
 
@@ -167,6 +146,31 @@ def generate_mock_boilerplate(prototype):
     #     mock().actualCall("foo").
     #         withOutputParameter("bar", bar);
     # }
+
+def parse_function_from_prototype(prototype):
+    ''' Parse the function from the prototype '''
+    # Thanks to cdecl.py from pycparser
+    parser = c_parser.CParser()
+    try:
+        ast = parser.parse(prototype)
+    except c_parser.ParseError as exc:
+        raise MockError("Parse error: '{0}' with input: '{1}'".format(
+            str(exc), prototype))
+    decl = ast.ext[-1]
+    if not isinstance(decl, c_ast.Decl):
+        raise MockError("Not a valid declaration: " + prototype)
+    # decl.show(); print("")
+
+    if not isinstance(decl.type, c_ast.FuncDecl):
+        raise MockError("Not a function declaration: " + prototype)
+
+    # storage is, for example, "static" in "static void f();"
+    if decl.storage:
+        storage = ' '.join(decl.storage)
+        raise MockError("Cannot mock a function with storage: " + storage)
+
+    return (decl.type, decl.name)
+
 
 def generate_type_name(func_decl):
     ''' Generates the type name '''
