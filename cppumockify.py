@@ -82,7 +82,7 @@ class MockError(Exception):
 def generate_mock(mocked_module, mock_prototype):
     ''' Generates the mock '''
     mock_filename = "{0}_mock.cpp".format(mocked_module)
-    include_filename = "{0}.h".format(mock_filename)
+    include_filename = "{0}.h".format(mocked_module)
     logger.debug("working directory: %s", os.getcwd())
     logger.debug("mock_filename: %s", mock_filename)
     logger.debug("include_filename: %s", include_filename)
