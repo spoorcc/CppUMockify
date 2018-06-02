@@ -194,65 +194,68 @@ def generate_mock_boilerplate(prototype):
 
 
 def generate_args(prototype, param_list):
-        if not param_list:
-            return '', ''
-        args = ''
-        with_parameters = ''
-        comma = ''
-        for decl in param_list.params:
-            # Decl: k, [], [], []
-            #     TypeDecl: k, []
-            #         IdentifierType: ['int']
-            # Decl: i, [], [], []
-            #     PtrDecl: []
-            #         TypeDecl: i, []
-            #             IdentifierType: ['char']
-            decl.show()
-            param_name = decl.name
-            if isinstance(decl.type, c_ast.TypeDecl):
-                type_decl = decl.type
-                identifier_type = type_decl.type
-                param_type = identifier_type.names[0]
-            elif isinstance(decl.type, c_ast.PtrDecl):
-                type_decl = decl.type.type
-                identifier_type = type_decl.type
-                param_type = identifier_type.names[0] + '*'
+    if not param_list:
+        return '', ''
+    args = ''
+    with_parameters = ''
+    comma = ''
+    for decl in param_list.params:
+        # Decl: k, [], [], []
+        #     TypeDecl: k, []
+        #         IdentifierType: ['int']
+        # Decl: i, [], [], []
+        #     PtrDecl: []
+        #         TypeDecl: i, []
+        #             IdentifierType: ['char']
+        decl.show()
+        param_name = decl.name
+        if isinstance(decl.type, c_ast.TypeDecl):
+            type_decl = decl.type
+            identifier_type = type_decl.type
+            param_type = identifier_type.names[0]
+        elif isinstance(decl.type, c_ast.PtrDecl):
+            type_decl = decl.type.type
+            identifier_type = type_decl.type
+            param_type = identifier_type.names[0] + '*'
+        else:
+            raise MockError("Internal error parsing arguments in: '{0}'"
+                            .format(prototype))
+
+        if not param_name:
+            # Unnamed void argument: "f(void);" ?
+            if param_type == 'void':
+                # FIXME Not 100% robust if other arguments are present
+                return '', ''
             else:
-                raise MockError("Internal error parsing arguments in: '{0}'"
+                raise MockError("Cannot mock unnamed arguments. "
+                                "Please rewrite the prototype: '{0}'"
                                 .format(prototype))
+        if len(type_decl.quals) > 0:
+            param_type = type_decl.quals[0] + " " + param_type
 
-            if not param_name:
-                # Unnamed void argument: "f(void);" ?
-                if param_type == 'void':
-                    # FIXME Not 100% robust if other arguments are present
-                    return '', ''
-                else:
-                    raise MockError("Cannot mock unnamed arguments. "
-                                    "Please rewrite the prototype: '{0}'"
-                                    .format(prototype))
-            if len(type_decl.quals) > 0:
-                param_type = type_decl.quals[0] + " " + param_type
+        args += '{comma}{param_type} {param_name}'.format(
+            comma=comma,
+            param_type=param_type,
+            param_name=param_name)
+        with_parameters += \
+            '\n        .withParameter("{0}", {0})'.format(param_name)
+        comma = ', '
 
-            args += '{comma}{param_type} {param_name}'.format(
-                comma=comma,
-                param_type=param_type,
-                param_name=param_name)
-            with_parameters += \
-                '\n        .withParameter("{0}", {0})'.format(param_name)
-            comma = ', '
+    return args, with_parameters
 
-        return args, with_parameters
 
 def main():
-    parser = argparse.ArgumentParser(description='Generate CppUMock boilerplate code.')
+    parser = argparse.ArgumentParser(
+        description='Generate CppUMock boilerplate code.')
     parser.add_argument('module', metavar='<module>', type=str,
-    	                    help='Module that will be mocked')
+                        help='Module that will be mocked')
     parser.add_argument('prototype', metavar='<prototype>', type=str,
-    	                    help='Function prototype to generate the mock for')
-    
+                        help='Function prototype to generate the mock for')
+
     args = parser.parse_args()
 
     generate_mock(args.module, args.prototype)
+
 
 if __name__ == "__main__":
     main()
