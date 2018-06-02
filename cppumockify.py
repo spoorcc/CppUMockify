@@ -20,7 +20,6 @@ It expects to be run in the directory containing the mocks.
 """
 
 
-import sys
 import os.path
 import argparse
 
@@ -50,9 +49,25 @@ NON_VOID_MOCK = '''
     return WRITEME;
 }}'''.lstrip("\n")
 
+RETURN_VALUES = {
+    # All the return values supported by CppUMock.
+    'int':               'intReturnValue()',
+    'unsigned int':      'unsignedIntReturnValue()',
+    'long int':          'longIntReturnValue()',
+    'unsigned long int': 'unsignedLongIntReturnValue()',
+    'const char*':       'stringReturnValue()',
+    'double':            'doubleReturnValue()',
+    'void*':             'pointerReturnValue()',
+    'const void*':       'constPointerReturnValue()',
+
+    # Synthetic case
+    'char*':             'pointerReturnValue()',
+}
 
 class MockError(Exception):
+    ''' Error class for CppUMockify '''
     def __init__(self, value):
+        super().__init__()
         self.value = value
 
     def __str__(self):
@@ -60,6 +75,7 @@ class MockError(Exception):
 
 
 def generate_mock(mocked_module, mock_prototype):
+    ''' Generates the mock '''
     mock_filename = "{0}_mock.cpp".format(mocked_module)
     include_filename = "{0}.h".format(mock_filename)
     print("working directory: " + os.getcwd())
@@ -78,30 +94,33 @@ def generate_mock(mocked_module, mock_prototype):
 
 
 def write_header(file, header, include):
+    ''' Writes the file header '''
     print("Adding file header")
     header = header.replace("@include@", include)
     file.write(header)
 
 
 def add_mock_function(file, prototype):
+    ''' Add the mock function to the mock file '''
     print("Adding mock function")
     # TODO: parse file to see if mock function is already there...
     try:
         mock_function = generate_mock_boilerplate(prototype)
         file.write("\n" + mock_function + "\n")
-    except MockError as e:
-        print("Error: " + e.value)
+    except MockError as exc:
+        print("Error: " + exc.value)
 
 
 def generate_mock_boilerplate(prototype):
+    ''' Generate the boilerplate for the mock '''
     # Thanks to cdecl.py from pycparser
 
     parser = c_parser.CParser()
     try:
         ast = parser.parse(prototype)
-    except c_parser.ParseError as e:
+    except c_parser.ParseError as exc:
         raise MockError("Parse error: '{0}' with input: '{1}'".format(
-            str(e), prototype))
+            str(exc), prototype))
     decl = ast.ext[-1]
     if not isinstance(decl, c_ast.Decl):
         raise MockError("Not a valid declaration: " + prototype)
@@ -145,25 +164,12 @@ def generate_mock_boilerplate(prototype):
     if pointer:
         type_name += '*'
     # e.g.: "const" in "const char* f()"
-    if len(type_decl.quals) > 0:
+    try:
         type_name = type_decl.quals[0] + " " + type_name
+    except IndexError:
+        pass
 
     args, with_parameters = generate_args(prototype, func_decl.args)
-
-    return_values = {
-        # All the return values supported by CppUMock.
-        'int':               'intReturnValue()',
-        'unsigned int':      'unsignedIntReturnValue()',
-        'long int':          'longIntReturnValue()',
-        'unsigned long int': 'unsignedLongIntReturnValue()',
-        'const char*':       'stringReturnValue()',
-        'double':            'doubleReturnValue()',
-        'void*':             'pointerReturnValue()',
-        'const void*':       'constPointerReturnValue()',
-
-        # Synthetic case
-        'char*':             'pointerReturnValue()',
-    }
 
     if type_name == 'void':
         mock = VOID_MOCK.format(
@@ -171,13 +177,13 @@ def generate_mock_boilerplate(prototype):
             function=function_name,
             args=args,
             with_parameters=with_parameters)
-    elif type_name in return_values:
+    elif type_name in RETURN_VALUES:
         mock = NON_VOID_MOCK.format(
             return_type=type_name,
             function=function_name,
             args=args,
             with_parameters=with_parameters,
-            return_value=return_values[type_name])
+            return_value=RETURN_VALUES[type_name])
     else:
         raise MockError("Internal error, cannot handle: {0} [{1}]".format(
             prototype, type_name))
@@ -194,6 +200,7 @@ def generate_mock_boilerplate(prototype):
 
 
 def generate_args(prototype, param_list):
+    ''' Generate the arguments '''
     if not param_list:
         return '', ''
     args = ''
@@ -230,8 +237,10 @@ def generate_args(prototype, param_list):
                 raise MockError("Cannot mock unnamed arguments. "
                                 "Please rewrite the prototype: '{0}'"
                                 .format(prototype))
-        if len(type_decl.quals) > 0:
+        try:
             param_type = type_decl.quals[0] + " " + param_type
+        except IndexError:
+            pass
 
         args += '{comma}{param_type} {param_name}'.format(
             comma=comma,
@@ -245,6 +254,7 @@ def generate_args(prototype, param_list):
 
 
 def main():
+    ''' Main entry for cli usage '''
     parser = argparse.ArgumentParser(
         description='Generate CppUMock boilerplate code.')
     parser.add_argument('module', metavar='<module>', type=str,
