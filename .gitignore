@@ -5,3 +5,5 @@ CppUMockify.egg-info
 dist
 build
 
+example/bld
+example/example_venv

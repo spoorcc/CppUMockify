@@ -5,7 +5,9 @@ python:
 - '3.6'
 - nightly
 install: pip install -r requirements.txt
-script: "./test_mockify.py"
+script:
+  - "./test_mockify.py"
+  - "example/build_and_run.sh"
 deploy:
   provider: pypi
   username: spoorcc
