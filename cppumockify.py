@@ -41,35 +41,6 @@ extern "C" {
 
 '''
 
-VOID_MOCK = '''
-{return_type} {function}({args}) {{
-    mock().actualCall("{function}"){with_parameters};
-}}'''.lstrip("\n")
-
-NON_VOID_MOCK = '''
-{return_type} {function}({args}) {{
-    mock().actualCall("{function}"){with_parameters};
-    if mock().hasReturnValue() {{
-        return mock().{return_value};
-    }}
-    return WRITEME;
-}}'''.lstrip("\n")
-
-RETURN_VALUES = {
-    # All the return values supported by CppUMock.
-    'int':               'intReturnValue()',
-    'unsigned int':      'unsignedIntReturnValue()',
-    'long int':          'longIntReturnValue()',
-    'unsigned long int': 'unsignedLongIntReturnValue()',
-    'const char*':       'stringReturnValue()',
-    'double':            'doubleReturnValue()',
-    'void*':             'pointerReturnValue()',
-    'const void*':       'constPointerReturnValue()',
-
-    # Synthetic case
-    'char*':             'pointerReturnValue()',
-}
-
 class MockError(Exception):
     ''' Error class for CppUMockify '''
     def __init__(self, value):
@@ -152,6 +123,112 @@ class Prototype():
         self.type_name = type_name
 
 
+class MockFunction():
+
+    VOID_MOCK = '''
+{return_type} {function}({args}) {{
+    mock().actualCall("{function}"){with_parameters};
+}}'''.lstrip("\n")
+    
+    NON_VOID_MOCK = '''
+{return_type} {function}({args}) {{
+    mock().actualCall("{function}"){with_parameters};
+    if mock().hasReturnValue() {{
+        return mock().{return_value};
+    }}
+    return WRITEME;
+}}'''.lstrip("\n")
+
+    RETURN_VALUES = {
+        # All the return values supported by CppUMock.
+        'int':               'intReturnValue()',
+        'unsigned int':      'unsignedIntReturnValue()',
+        'long int':          'longIntReturnValue()',
+        'unsigned long int': 'unsignedLongIntReturnValue()',
+        'const char*':       'stringReturnValue()',
+        'double':            'doubleReturnValue()',
+        'void*':             'pointerReturnValue()',
+        'const void*':       'constPointerReturnValue()',
+    
+        # Synthetic case
+        'char*':             'pointerReturnValue()',
+    }
+
+    def __init__(self, func_to_mock):
+        args, with_parameters = self._generate_args(func_to_mock.args)
+
+        if func_to_mock.type_name == 'void':
+            self.mock = self.VOID_MOCK.format(
+                return_type=func_to_mock.type_name,
+                function=func_to_mock.name,
+                args=args,
+                with_parameters=with_parameters)
+        elif func_to_mock.type_name in self.RETURN_VALUES:
+            self.mock = self.NON_VOID_MOCK.format(
+                return_type=func_to_mock.type_name,
+                function=func_to_mock.name,
+                args=args,
+                with_parameters=with_parameters,
+                return_value=self.RETURN_VALUES[func_to_mock.type_name])
+        else:
+            raise MockError("Internal error, cannot handle: [{0}]".format(
+                func_to_mock.type_name))
+
+    def generate(self):
+        return self.mock
+
+    def _generate_args(self, param_list):
+        ''' Generate the arguments '''
+        if not param_list:
+            return '', ''
+        args = ''
+        with_parameters = ''
+        comma = ''
+        for decl in param_list.params:
+            # Decl: k, [], [], []
+            #     TypeDecl: k, []
+            #         IdentifierType: ['int']
+            # Decl: i, [], [], []
+            #     PtrDecl: []
+            #         TypeDecl: i, []
+            #             IdentifierType: ['char']
+            #decl.show()
+            param_name = decl.name
+            if isinstance(decl.type, c_ast.TypeDecl):
+                type_decl = decl.type
+                identifier_type = type_decl.type
+                param_type = identifier_type.names[0]
+            elif isinstance(decl.type, c_ast.PtrDecl):
+                type_decl = decl.type.type
+                identifier_type = type_decl.type
+                param_type = identifier_type.names[0] + '*'
+            else:
+                raise MockError("Internal error parsing arguments")
+    
+            if not param_name:
+                # Unnamed void argument: "f(void);" ?
+                if param_type == 'void':
+                    # FIXME Not 100% robust if other arguments are present
+                    return '', ''
+                else:
+                    raise MockError("Cannot mock unnamed arguments. "
+                                    "Please rewrite the prototype")
+            try:
+                param_type = type_decl.quals[0] + " " + param_type
+            except IndexError:
+                pass
+    
+            args += '{comma}{param_type} {param_name}'.format(
+                comma=comma,
+                param_type=param_type,
+                param_name=param_name)
+            with_parameters += \
+                '\n        .withParameter("{0}", {0})'.format(param_name)
+            comma = ', '
+    
+        return args, with_parameters
+
+
 def generate_mock(mocked_module, mock_prototype):
     ''' Generates the mock '''
     mock_filename = "{0}_mock.cpp".format(mocked_module)
@@ -190,92 +267,10 @@ def add_mock_function(file, prototype):
 
 
 def generate_mock_boilerplate(prototype):
-    ''' Generate the boilerplate for the mock '''
+    ''' Create mock function from prototype '''
 
     func_to_mock = Prototype(prototype)
-
-    args, with_parameters = generate_args(prototype, func_to_mock.args)
-
-    if func_to_mock.type_name == 'void':
-        mock = VOID_MOCK.format(
-            return_type=func_to_mock.type_name,
-            function=func_to_mock.name,
-            args=args,
-            with_parameters=with_parameters)
-    elif func_to_mock.type_name in RETURN_VALUES:
-        mock = NON_VOID_MOCK.format(
-            return_type=func_to_mock.type_name,
-            function=func_to_mock.name,
-            args=args,
-            with_parameters=with_parameters,
-            return_value=RETURN_VALUES[func_to_mock.type_name])
-    else:
-        raise MockError("Internal error, cannot handle: {0} [{1}]".format(
-            prototype, func_to_mock.type_name))
-
-    return mock
-
-    # Output parameters:
-    #
-    # void foo(int* bar)
-    # {
-    #     mock().actualCall("foo").
-    #         withOutputParameter("bar", bar);
-    # }
-
-
-def generate_args(prototype, param_list):
-    ''' Generate the arguments '''
-    if not param_list:
-        return '', ''
-    args = ''
-    with_parameters = ''
-    comma = ''
-    for decl in param_list.params:
-        # Decl: k, [], [], []
-        #     TypeDecl: k, []
-        #         IdentifierType: ['int']
-        # Decl: i, [], [], []
-        #     PtrDecl: []
-        #         TypeDecl: i, []
-        #             IdentifierType: ['char']
-        #decl.show()
-        param_name = decl.name
-        if isinstance(decl.type, c_ast.TypeDecl):
-            type_decl = decl.type
-            identifier_type = type_decl.type
-            param_type = identifier_type.names[0]
-        elif isinstance(decl.type, c_ast.PtrDecl):
-            type_decl = decl.type.type
-            identifier_type = type_decl.type
-            param_type = identifier_type.names[0] + '*'
-        else:
-            raise MockError("Internal error parsing arguments in: '{0}'"
-                            .format(prototype))
-
-        if not param_name:
-            # Unnamed void argument: "f(void);" ?
-            if param_type == 'void':
-                # FIXME Not 100% robust if other arguments are present
-                return '', ''
-            else:
-                raise MockError("Cannot mock unnamed arguments. "
-                                "Please rewrite the prototype: '{0}'"
-                                .format(prototype))
-        try:
-            param_type = type_decl.quals[0] + " " + param_type
-        except IndexError:
-            pass
-
-        args += '{comma}{param_type} {param_name}'.format(
-            comma=comma,
-            param_type=param_type,
-            param_name=param_name)
-        with_parameters += \
-            '\n        .withParameter("{0}", {0})'.format(param_name)
-        comma = ', '
-
-    return args, with_parameters
+    return MockFunction(func_to_mock).generate()
 
 
 def main():
