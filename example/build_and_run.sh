@@ -10,6 +10,8 @@ python -m venv example_venv
 # Install  cppumockify
 pip install -e ..
 
+pip list
+
 # Build the example project
 mkdir -p bld
 cd bld
