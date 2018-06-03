@@ -80,6 +80,78 @@ class MockError(Exception):
         return repr(self.value)
 
 
+class Prototype():
+
+    def __init__(self, prototype):
+        ''' Prototype class takes a string prototype and makes function args, name and return type accessible '''
+
+        self._func_decl, self.name = self._parse_function_from_prototype(prototype)
+        self._generate_type_name(self._func_decl)
+
+        self.args = self._func_decl.args
+
+    def _parse_function_from_prototype(self, prototype):
+        ''' Parse the function from the prototype '''
+        # Thanks to cdecl.py from pycparser
+        parser = c_parser.CParser()
+        try:
+            ast = parser.parse(prototype)
+        except c_parser.ParseError as exc:
+            raise MockError("Parse error: '{0}' with input: '{1}'".format(
+                str(exc), prototype))
+        decl = ast.ext[-1]
+        if not isinstance(decl, c_ast.Decl):
+            raise MockError("Not a valid declaration: " + prototype)
+        # decl.show(); print("")
+    
+        if not isinstance(decl.type, c_ast.FuncDecl):
+            raise MockError("Not a function declaration: " + prototype)
+    
+        # storage is, for example, "static" in "static void f();"
+        if decl.storage:
+            storage = ' '.join(decl.storage)
+            raise MockError("Cannot mock a function with storage: " + storage)
+    
+        return (decl.type, decl.name)
+    
+    def _generate_type_name(self, func_decl):
+        ''' Generates the type name '''
+    
+        pointer = False
+        if isinstance(func_decl.type, c_ast.PtrDecl):
+            # void* f(); =>
+            # Decl: f, [], [], []
+            #   FuncDecl:
+            #     PtrDecl: []                   <== here
+            #       TypeDecl: f, []
+            #         IdentifierType: ['void']
+            type_decl = func_decl.type.type
+            pointer = True
+        elif isinstance(func_decl.type, c_ast.TypeDecl):
+            # void f(); =>
+            # Decl: f, [], [], []
+            #   FuncDecl:
+            #     TypeDecl: f, []               <== here
+            #       IdentifierType: ['void']
+            type_decl = func_decl.type
+        else:
+            raise MockError("Internal error parsing: " + func_decl.name)
+    
+        identifier_type = type_decl.type
+    
+        # e.g.: "int" in "int f()"
+        type_name = ' '.join(identifier_type.names)
+        if pointer:
+            type_name += '*'
+        # e.g.: "const" in "const char* f()"
+        try:
+            type_name = type_decl.quals[0] + " " + type_name
+        except IndexError:
+            pass
+    
+        self.type_name = type_name
+
+
 def generate_mock(mocked_module, mock_prototype):
     ''' Generates the mock '''
     mock_filename = "{0}_mock.cpp".format(mocked_module)
@@ -120,28 +192,26 @@ def add_mock_function(file, prototype):
 def generate_mock_boilerplate(prototype):
     ''' Generate the boilerplate for the mock '''
 
-    func_decl, function_name = parse_function_from_prototype(prototype)
+    func_to_mock = Prototype(prototype)
 
-    type_name = generate_type_name(func_decl)
+    args, with_parameters = generate_args(prototype, func_to_mock.args)
 
-    args, with_parameters = generate_args(prototype, func_decl.args)
-
-    if type_name == 'void':
+    if func_to_mock.type_name == 'void':
         mock = VOID_MOCK.format(
-            return_type=type_name,
-            function=function_name,
+            return_type=func_to_mock.type_name,
+            function=func_to_mock.name,
             args=args,
             with_parameters=with_parameters)
-    elif type_name in RETURN_VALUES:
+    elif func_to_mock.type_name in RETURN_VALUES:
         mock = NON_VOID_MOCK.format(
-            return_type=type_name,
-            function=function_name,
+            return_type=func_to_mock.type_name,
+            function=func_to_mock.name,
             args=args,
             with_parameters=with_parameters,
-            return_value=RETURN_VALUES[type_name])
+            return_value=RETURN_VALUES[func_to_mock.type_name])
     else:
         raise MockError("Internal error, cannot handle: {0} [{1}]".format(
-            prototype, type_name))
+            prototype, func_to_mock.type_name))
 
     return mock
 
@@ -153,67 +223,6 @@ def generate_mock_boilerplate(prototype):
     #         withOutputParameter("bar", bar);
     # }
 
-def parse_function_from_prototype(prototype):
-    ''' Parse the function from the prototype '''
-    # Thanks to cdecl.py from pycparser
-    parser = c_parser.CParser()
-    try:
-        ast = parser.parse(prototype)
-    except c_parser.ParseError as exc:
-        raise MockError("Parse error: '{0}' with input: '{1}'".format(
-            str(exc), prototype))
-    decl = ast.ext[-1]
-    if not isinstance(decl, c_ast.Decl):
-        raise MockError("Not a valid declaration: " + prototype)
-    # decl.show(); print("")
-
-    if not isinstance(decl.type, c_ast.FuncDecl):
-        raise MockError("Not a function declaration: " + prototype)
-
-    # storage is, for example, "static" in "static void f();"
-    if decl.storage:
-        storage = ' '.join(decl.storage)
-        raise MockError("Cannot mock a function with storage: " + storage)
-
-    return (decl.type, decl.name)
-
-
-def generate_type_name(func_decl):
-    ''' Generates the type name '''
-
-    pointer = False
-    if isinstance(func_decl.type, c_ast.PtrDecl):
-        # void* f(); =>
-        # Decl: f, [], [], []
-        #   FuncDecl:
-        #     PtrDecl: []                   <== here
-        #       TypeDecl: f, []
-        #         IdentifierType: ['void']
-        type_decl = func_decl.type.type
-        pointer = True
-    elif isinstance(func_decl.type, c_ast.TypeDecl):
-        # void f(); =>
-        # Decl: f, [], [], []
-        #   FuncDecl:
-        #     TypeDecl: f, []               <== here
-        #       IdentifierType: ['void']
-        type_decl = func_decl.type
-    else:
-        raise MockError("Internal error parsing: " + func_decl.name)
-
-    identifier_type = type_decl.type
-
-    # e.g.: "int" in "int f()"
-    type_name = ' '.join(identifier_type.names)
-    if pointer:
-        type_name += '*'
-    # e.g.: "const" in "const char* f()"
-    try:
-        type_name = type_decl.quals[0] + " " + type_name
-    except IndexError:
-        pass
-
-    return type_name
 
 def generate_args(prototype, param_list):
     ''' Generate the arguments '''
