@@ -41,8 +41,10 @@ extern "C" {
 
 '''
 
+
 class MockError(Exception):
     ''' Error class for CppUMockify '''
+
     def __init__(self, value):
         super().__init__()
         self.value = value
@@ -56,7 +58,8 @@ class Prototype():
     def __init__(self, prototype):
         ''' Prototype class takes a string prototype and makes function args, name and return type accessible '''
 
-        self._func_decl, self.name = self._parse_function_from_prototype(prototype)
+        self._func_decl, self.name = self._parse_function_from_prototype(
+            prototype)
         self._generate_type_name(self._func_decl)
 
         self.args = self._func_decl.args
@@ -74,20 +77,20 @@ class Prototype():
         if not isinstance(decl, c_ast.Decl):
             raise MockError("Not a valid declaration: " + prototype)
         # decl.show(); print("")
-    
+
         if not isinstance(decl.type, c_ast.FuncDecl):
             raise MockError("Not a function declaration: " + prototype)
-    
+
         # storage is, for example, "static" in "static void f();"
         if decl.storage:
             storage = ' '.join(decl.storage)
             raise MockError("Cannot mock a function with storage: " + storage)
-    
+
         return (decl.type, decl.name)
-    
+
     def _generate_type_name(self, func_decl):
         ''' Generates the type name '''
-    
+
         pointer = False
         if isinstance(func_decl.type, c_ast.PtrDecl):
             # void* f(); =>
@@ -107,9 +110,9 @@ class Prototype():
             type_decl = func_decl.type
         else:
             raise MockError("Internal error parsing: " + func_decl.name)
-    
+
         identifier_type = type_decl.type
-    
+
         # e.g.: "int" in "int f()"
         type_name = ' '.join(identifier_type.names)
         if pointer:
@@ -119,7 +122,7 @@ class Prototype():
             type_name = type_decl.quals[0] + " " + type_name
         except IndexError:
             pass
-    
+
         self.type_name = type_name
 
 
@@ -129,7 +132,7 @@ class MockFunction():
 {return_type} {function}({args}) {{
     mock().actualCall("{function}"){with_parameters};
 }}'''.lstrip("\n")
-    
+
     NON_VOID_MOCK = '''
 {return_type} {function}({args}) {{
     mock().actualCall("{function}"){with_parameters};
@@ -149,7 +152,7 @@ class MockFunction():
         'double':            'doubleReturnValue()',
         'void*':             'pointerReturnValue()',
         'const void*':       'constPointerReturnValue()',
-    
+
         # Synthetic case
         'char*':             'pointerReturnValue()',
     }
@@ -192,7 +195,7 @@ class MockFunction():
             #     PtrDecl: []
             #         TypeDecl: i, []
             #             IdentifierType: ['char']
-            #decl.show()
+            # decl.show()
             param_name = decl.name
             if isinstance(decl.type, c_ast.TypeDecl):
                 type_decl = decl.type
@@ -204,7 +207,7 @@ class MockFunction():
                 param_type = identifier_type.names[0] + '*'
             else:
                 raise MockError("Internal error parsing arguments")
-    
+
             if not param_name:
                 # Unnamed void argument: "f(void);" ?
                 if param_type == 'void':
@@ -217,7 +220,7 @@ class MockFunction():
                 param_type = type_decl.quals[0] + " " + param_type
             except IndexError:
                 pass
-    
+
             args += '{comma}{param_type} {param_name}'.format(
                 comma=comma,
                 param_type=param_type,
@@ -225,7 +228,7 @@ class MockFunction():
             with_parameters += \
                 '\n        .withParameter("{0}", {0})'.format(param_name)
             comma = ', '
-    
+
         return args, with_parameters
 
 
