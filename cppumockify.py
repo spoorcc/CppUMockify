@@ -62,7 +62,7 @@ class Prototype():
             prototype)
         self._generate_type_name(self._func_decl)
 
-        self.args = self._func_decl.args
+        self._parse_all_parameters(self._func_decl.args.params)
 
     def _parse_function_from_prototype(self, prototype):
         ''' Parse the function from the prototype '''
@@ -125,6 +125,53 @@ class Prototype():
 
         self.type_name = type_name
 
+    def _parse_all_parameters(self, params):
+        self.args = []
+        for decl in params:
+            param_name, param_type = self._parse_single_param(decl)
+
+            if param_name:
+                self.args += [[param_name, param_type]]
+            else:
+                break # Void - stop parsing args
+
+    def _parse_single_param(self, decl):
+        
+        # Decl: k, [], [], []
+        #     TypeDecl: k, []
+        #         IdentifierType: ['int']
+        # Decl: i, [], [], []
+        #     PtrDecl: []
+        #         TypeDecl: i, []
+        #             IdentifierType: ['char']
+        # decl.show()
+        param_name = decl.name
+        if isinstance(decl.type, c_ast.TypeDecl):
+            type_decl = decl.type
+            identifier_type = type_decl.type
+            param_type = identifier_type.names[0]
+        elif isinstance(decl.type, c_ast.PtrDecl):
+            type_decl = decl.type.type
+            identifier_type = type_decl.type
+            param_type = identifier_type.names[0] + '*'
+        else:
+            raise MockError("Internal error parsing arguments")
+
+        if not param_name:
+            # Unnamed void argument: "f(void);" ?
+            if param_type == 'void':
+                # FIXME Not 100% robust if other arguments are present
+                return '', ''
+            else:
+                raise MockError("Cannot mock unnamed arguments. "
+                                "Please rewrite the prototype")
+        try:
+            param_type = type_decl.quals[0] + " " + param_type
+        except IndexError:
+            pass
+
+        return (param_name, param_type)
+
 
 class MockFunction():
 
@@ -158,6 +205,7 @@ class MockFunction():
     }
 
     def __init__(self, func_to_mock):
+
         args, with_parameters = self._generate_args(func_to_mock.args)
 
         if func_to_mock.type_name == 'void':
@@ -187,40 +235,7 @@ class MockFunction():
         args = ''
         with_parameters = ''
         comma = ''
-        for decl in param_list.params:
-            # Decl: k, [], [], []
-            #     TypeDecl: k, []
-            #         IdentifierType: ['int']
-            # Decl: i, [], [], []
-            #     PtrDecl: []
-            #         TypeDecl: i, []
-            #             IdentifierType: ['char']
-            # decl.show()
-            param_name = decl.name
-            if isinstance(decl.type, c_ast.TypeDecl):
-                type_decl = decl.type
-                identifier_type = type_decl.type
-                param_type = identifier_type.names[0]
-            elif isinstance(decl.type, c_ast.PtrDecl):
-                type_decl = decl.type.type
-                identifier_type = type_decl.type
-                param_type = identifier_type.names[0] + '*'
-            else:
-                raise MockError("Internal error parsing arguments")
-
-            if not param_name:
-                # Unnamed void argument: "f(void);" ?
-                if param_type == 'void':
-                    # FIXME Not 100% robust if other arguments are present
-                    return '', ''
-                else:
-                    raise MockError("Cannot mock unnamed arguments. "
-                                    "Please rewrite the prototype")
-            try:
-                param_type = type_decl.quals[0] + " " + param_type
-            except IndexError:
-                pass
-
+        for param_name, param_type in param_list:
             args += '{comma}{param_type} {param_name}'.format(
                 comma=comma,
                 param_type=param_type,
