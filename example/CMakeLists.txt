@@ -35,7 +35,7 @@ target_link_libraries(example Greetings MyModule)
 
 # Create a test for Greetings module
 message(STATUS "Generating mock")
-execute_process(COMMAND ${CMAKE_SOURCE_DIR}/generate_mymodule_mock.sh ${CMAKE_BINARY_DIR}/tst OUTPUT_FILE generate_log.txt)
+execute_process(COMMAND ${CMAKE_SOURCE_DIR}/generate_mymodule_mock.sh ${CMAKE_BINARY_DIR}/tst)
 add_executable(test_greetings tst/test_greetings.cpp tst/MyModule_mock.cpp)
 target_link_libraries(test_greetings Greetings CppUTest CppUTestExt)
 add_dependencies(test_greetings CppUTest-project)
