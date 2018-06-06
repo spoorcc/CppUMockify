@@ -60,7 +60,7 @@ class Prototype():
 
         self._func_decl, self.name = self._parse_function_from_prototype(
             prototype)
-        self._generate_type_name(self._func_decl)
+        self._parse_return_type(self._func_decl)
 
         self._parse_all_parameters(self._func_decl.args.params)
 
@@ -88,8 +88,8 @@ class Prototype():
 
         return (decl.type, decl.name)
 
-    def _generate_type_name(self, func_decl):
-        ''' Generates the type name '''
+    def _parse_return_type(self, func_decl):
+        ''' Parses the type name from the function declaration '''
 
         pointer = False
         if isinstance(func_decl.type, c_ast.PtrDecl):
@@ -114,16 +114,14 @@ class Prototype():
         identifier_type = type_decl.type
 
         # e.g.: "int" in "int f()"
-        type_name = ' '.join(identifier_type.names)
+        self.return_type = ' '.join(identifier_type.names)
         if pointer:
-            type_name += '*'
+            self.return_type += '*'
         # e.g.: "const" in "const char* f()"
         try:
-            type_name = type_decl.quals[0] + " " + type_name
+            self.return_type = type_decl.quals[0] + " " + self.return_type
         except IndexError:
             pass
-
-        self.type_name = type_name
 
     def _parse_all_parameters(self, params):
         self.args = []
@@ -208,22 +206,22 @@ class MockFunction():
 
         args, with_parameters = self._generate_args(func_to_mock.args)
 
-        if func_to_mock.type_name == 'void':
+        if func_to_mock.return_type == 'void':
             self.mock = self.VOID_MOCK.format(
-                return_type=func_to_mock.type_name,
+                return_type=func_to_mock.return_type,
                 function=func_to_mock.name,
                 args=args,
                 with_parameters=with_parameters)
-        elif func_to_mock.type_name in self.RETURN_VALUES:
+        elif func_to_mock.return_type in self.RETURN_VALUES:
             self.mock = self.NON_VOID_MOCK.format(
-                return_type=func_to_mock.type_name,
+                return_type=func_to_mock.return_type,
                 function=func_to_mock.name,
                 args=args,
                 with_parameters=with_parameters,
-                return_value=self.RETURN_VALUES[func_to_mock.type_name])
+                return_value=self.RETURN_VALUES[func_to_mock.return_type])
         else:
             raise MockError("Internal error, cannot handle: [{0}]".format(
-                func_to_mock.type_name))
+                func_to_mock.return_type))
 
     def generate(self):
         return self.mock
