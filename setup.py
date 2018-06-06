@@ -35,7 +35,7 @@ setup(
 
     entry_points={
         'console_scripts': [
-            'cppumockify=cppumockify:main',
+            'cppumockify=cppumockify.main:main',
         ],
     },
 
