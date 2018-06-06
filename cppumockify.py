@@ -58,10 +58,8 @@ class Prototype():
     def __init__(self, prototype):
         ''' Prototype class takes a string prototype and makes function args, name and return type accessible '''
 
-        self._func_decl, self.name = self._parse_function_from_prototype(
-            prototype)
+        self._parse_function_from_prototype(prototype)
         self._parse_return_type(self._func_decl)
-
         self._parse_all_parameters(self._func_decl.args.params)
 
     def _parse_function_from_prototype(self, prototype):
@@ -86,7 +84,8 @@ class Prototype():
             storage = ' '.join(decl.storage)
             raise MockError("Cannot mock a function with storage: " + storage)
 
-        return (decl.type, decl.name)
+        self._func_decl = decl.type
+        self.name = decl.name
 
     def _parse_return_type(self, func_decl):
         ''' Parses the type name from the function declaration '''
