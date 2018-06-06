@@ -6,7 +6,8 @@ python:
 - nightly
 install: pip install -r requirements.txt
 script:
-  - "./test_mockify.py"
+  - pip install -e .
+  - "./tests/test_mockify.py"
   - "example/build_and_run.sh"
 deploy:
   provider: pypi
