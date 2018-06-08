@@ -4,11 +4,14 @@ python:
 - '3.5'
 - '3.6'
 - nightly
-install: pip install -r requirements.txt
+install: 
+  - pip install -r requirements.txt
+  - pip install xenon
 script:
   - pip install -e .
   - "./tests/test_mockify.py"
   - "example/build_and_run.sh"
+  - xenon --max-absolute B --max-modules A --max-average A 
 deploy:
   provider: pypi
   username: spoorcc
