@@ -11,7 +11,7 @@ script:
   - pip install -e .
   - "./tests/test_mockify.py"
   - "example/build_and_run.sh"
-  - xenon --max-absolute B --max-modules A --max-average A 
+  - xenon --max-absolute B --max-modules A --max-average A cppumockify
 deploy:
   provider: pypi
   username: spoorcc
